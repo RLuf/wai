@@ -223,11 +223,27 @@ def _handle_choice(stdscr, choice, logs, guardrails):
             manage_quantization(model, to, outm)
             logs.append("Quantization completed.")
         elif choice == "Manage Weights":
-            action = prompt(3,4, "Action (add/remove): ")
-            wf = prompt(5,4, "Weight file path: ")
-            logs.append(f"Managing weights...")
-            manage_weights(action, wf)
-            logs.append("Weights updated.")
+            action = prompt(3, 4, "Action (add/remove/list): ")
+            wf = None
+            if action in ('add', 'remove'):
+                wf = prompt(5, 4, "Weight file path: ")
+            logs.append("Managing weights...")
+            # Capture output from manage_weights
+            out = []
+            try:
+                from framework import manage_weights as _mw
+                # Temporarily redirect prints
+                import io, sys as _sys
+                buf = io.StringIO()
+                old = _sys.stdout
+                _sys.stdout = buf
+                _mw(action, wf)
+                _sys.stdout = old
+                out = buf.getvalue().splitlines()
+            except Exception as e:
+                out = [f"Error: {e}"]
+            for line in out:
+                logs.append(line)
     except Exception as e:
         logs.append(str(e))
     stdscr.addstr(max_y-2, 2, "Press any key to return...", curses.A_DIM)

@@ -70,8 +70,17 @@ def main():
         "weights",
         help="Manage weight files. Gerencia arquivos de peso."
     )
-    wt_p.add_argument("--action", choices=["add", "remove"], required=True, help="Action add/remove. Ação adicionar/remover.")
-    wt_p.add_argument("--file", required=True, help="Weight file path. Caminho do arquivo de peso.")
+    wt_p.add_argument(
+        "--action",
+        choices=["add", "remove", "list"],
+        required=True,
+        help="Action add/remove/list. Ação adicionar/remover/listar."
+    )
+    wt_p.add_argument(
+        "--file",
+        required=False,
+        help="Weight file path (not needed for list). Caminho do arquivo de peso (não necessário para list)."
+    )
 
     tui_p = subparsers.add_parser(
         "tui",

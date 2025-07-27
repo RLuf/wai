@@ -105,8 +105,22 @@ def manage_weights(action: str, weight_file: str) -> None:
       action: 'add' or 'remove'.
       weight_file: path to the weight file.
     """
+    import os
+    # List weights (e.g., in gemma_src/models) or manage add/remove
+    if action == 'list':
+        # Attempt to list known weight files in models directory
+        models_dir = os.path.join(os.getcwd(), 'gemma_src', 'models')
+        print(f"[Weights] listing weight files in: {models_dir}")
+        if os.path.isdir(models_dir):
+            for fname in sorted(os.listdir(models_dir)):
+                print(f" - {fname}")
+        else:
+            print("[Weights] models directory not found.")
+        return
     if action not in ('add', 'remove'):
-        raise ValueError("action must be 'add' or 'remove'.")
+        raise ValueError("action must be 'add', 'remove', or 'list'.")
+    if not weight_file:
+        raise ValueError("--file is required for add/remove actions.")
     print(f"[Weights] action={action}, file={weight_file}")
     # Placeholder for weight management logic
     print(f"[Weights] {action} operation completed for {weight_file}")

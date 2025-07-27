@@ -1,3 +1,9 @@
+# Framework para alteração compilacao e quantizacao de  comportamental de modelos
+# Fornece recursos para alteracao de politicas guardrails, etc.
+# 
+# Roger Luft 27/07/2025
+
+
 # Gemma Guardrails Manager
 
 CLI entry point for Gemma guardrails manager.
@@ -91,6 +97,9 @@ python3 cli.py weights --action add --file new_weights.bin
 
 # remover peso
 python3 cli.py weights --action remove --file old_weights.bin
+
+# listar pesos disponíveis
+python3 cli.py weights --action list
 ```
 
 ### Build Gemma C++ Inference Engine / Compilação do motor de inferência Gemma C++
