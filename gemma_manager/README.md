@@ -32,6 +32,10 @@ Controls / Controles:
 - ENTER: confirm selection and exit / confirmar seleção e sair
 - Q: quit without selecting / sair sem selecionar
 
+> **Note / Nota:** If you encounter a terminal initialization error (e.g., "could not find terminal"),
+> ensure you're running in a real terminal with a valid TERM environment variable set,
+> e.g., `export TERM=xterm-256color`.
+
 ## Interactive TUI Interface / Interface TUI Interativa
 
 The TUI presents a list of guardrails on the left and the code context on the right.

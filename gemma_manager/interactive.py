@@ -30,7 +30,25 @@ MENU_ITEMS = [
 ]
 
 def run_tui():
-    curses.wrapper(_main)
+    """
+    Launch the full-screen TUI. Requires a valid terminal (TTY and TERM set).
+    """
+    import os
+    import sys
+
+    # Ensure running in a terminal environment
+    if not sys.stdin.isatty() or 'TERM' not in os.environ:
+        print(
+            "Error: Unable to initialize TUI. Please run this command in a terminal "
+            "with a valid TERM environment variable set.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    try:
+        curses.wrapper(_main)
+    except curses.error as e:
+        print(f"Error initializing terminal: {e}", file=sys.stderr)
+        sys.exit(1)
 
 def _main(stdscr):
     # Initialize colors
