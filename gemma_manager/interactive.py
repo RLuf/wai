@@ -28,6 +28,7 @@ MENU_ITEMS = [
     "Tool",
     "Quantize Model",
     "Manage Weights",
+    "Compile Gemma",
     "Exit",
 ]
 
@@ -91,7 +92,18 @@ HELP_TEXT = {
         "Adiciona ou remove arquivos de pesos na configuração do modelo.",
         "Exemplo: weights --action add --file new_weights.bin"
     ],
+    "Compile Gemma": [
+        "Compila o executável Gemma usando presets de build.",
+        "Use espaço para marcar presets e Enter para iniciar a compilação."
+    ],
 }
+
+## Presets de compilação (nome, lista de comandos)
+BUILD_PRESETS = [
+    ("Unix Make (CMake preset make)", ["cmake --preset make", "cmake --build . --preset make -j$(nproc)"]),
+    ("Windows Release (CMake preset windows)", ["cmake --preset windows", "cmake --build . --preset windows --config Release"]),
+    ("Bazel build (opt)", ["bazel build -c opt --cxxopt=-std=c++20 :gemma"]),
+]
 
 # Recommended weights (filename -> (description, origin URL))
 RECOMMENDED_WEIGHTS = {
@@ -113,6 +125,7 @@ RECOMMENDED_WEIGHTS = {
     ),
 }
 
+def _main(stdscr):
     k = 0
     selected = 0
     logs = []
@@ -242,6 +255,48 @@ def _handle_choice(stdscr, choice, logs, guardrails):
             logs.append(f"Quantizing model...")
             manage_quantization(model, to, outm)
             logs.append("Quantization completed.")
+        elif choice == "Compile Gemma":
+            # Interactive compile presets
+            if not BUILD_PRESETS:
+                logs.append("No build presets defined.")
+            else:
+                logs.append("Select build presets (space toggle, b back, Enter to build)...")
+                idx2 = 0
+                sel2 = [False] * len(BUILD_PRESETS)
+                while True:
+                    stdscr.erase()
+                    stdscr.addstr(1, 2, "[ Compile Gemma ]", curses.A_BOLD)
+                    stdscr.addstr(2, 4, "b=back", curses.A_DIM)
+                    for j, (name, _) in enumerate(BUILD_PRESETS):
+                        mark2 = "[x]" if sel2[j] else "[ ]"
+                        stdscr.addstr(4 + j, 4, f"{mark2} {name}")
+                    stdscr.move(4 + idx2, 5)
+                    stdscr.refresh()
+                    key2 = stdscr.getch()
+                    if key2 in (curses.KEY_UP, ord('k')):
+                        idx2 = (idx2 - 1) % len(BUILD_PRESETS)
+                    elif key2 in (curses.KEY_DOWN, ord('j')):
+                        idx2 = (idx2 + 1) % len(BUILD_PRESETS)
+                    elif key2 == ord(' '):
+                        sel2[idx2] = not sel2[idx2]
+                    elif key2 in (ord('b'), ord('B')):
+                        break
+                    elif key2 in (10, 13):
+                        for j, selected_p in enumerate(sel2):
+                            if selected_p:
+                                name, cmds = BUILD_PRESETS[j]
+                                logs.append(f"Running build preset: {name}")
+                                for cmd in cmds:
+                                    logs.append(f"$ {cmd}")
+                                    try:
+                                        out = subprocess.check_output(
+                                            cmd, shell=True, stderr=subprocess.STDOUT, text=True
+                                        )
+                                        for L in out.splitlines():
+                                            logs.append(L)
+                                    except subprocess.CalledProcessError as e:
+                                        logs.append(f"Error: {e}")
+                        break
         elif choice == "Manage Weights":
             # Interactive weight selection: combine local and recommended
             local_dir = os.path.join(os.getcwd(), "gemma_src", "models")
@@ -261,15 +316,17 @@ def _handle_choice(stdscr, choice, logs, guardrails):
             if not items:
                 logs.append("No local or recommended weights found.")
             else:
-                logs.append("Select weights to add (space to toggle, Enter to confirm)...")
+                logs.append("Select weights to add (space toggle, r refresh, b back, Enter to confirm)")
                 idx = 0
                 while True:
                     stdscr.erase()
                     stdscr.addstr(1, 2, "[ Manage Weights ]", curses.A_BOLD)
+                    stdscr.addstr(2, 4, "r=refresh, b=back", curses.A_DIM)
                     for i, it in enumerate(items):
                         mark = "[x]" if it["selected"] else "[ ]"
-                        stdscr.addstr(3 + i, 4,
-                                      f"{mark} {it['name']} ({it['origin']}) - {it['desc']}")
+                        stdscr.addstr(4 + i, 4,
+                                      f"{mark} {it['name']:<16} ({it['origin']}) - {it['desc']}")
+                    stdscr.move(4 + idx, 5)
                     stdscr.refresh()
                     key = stdscr.getch()
                     if key in (curses.KEY_UP, ord('k')):
@@ -278,20 +335,27 @@ def _handle_choice(stdscr, choice, logs, guardrails):
                         idx = (idx + 1) % len(items)
                     elif key == ord(' '):
                         items[idx]["selected"] = not items[idx]["selected"]
-                    elif key in (10, 13):
+                    elif key in (ord('r'), ord('R')):
+                        # rebuild items
+                        logs.append("Refreshing weight list...")
+                        # re-import this function
+                        return _handle_choice(stdscr, choice, logs, guardrails)
+                    elif key in (ord('b'), ord('B')):
                         break
-                for it in items:
-                    if it["selected"]:
-                        fname = it["name"]
-                        logs.append(f"Adding weight {fname}...")
-                        try:
-                            from framework import manage_weights as _mw
-                            _mw("add",
-                                fname if it.get("origin") == "local"
-                                else it.get("url"))
-                            logs.append(f"Weight {fname} added.")
-                        except Exception as e:
-                            logs.append(f"Error adding {fname}: {e}")
+                    elif key in (10, 13):
+                        for it in items:
+                            if it["selected"]:
+                                fname = it["name"]
+                                logs.append(f"Adding weight {fname}...")
+                                try:
+                                    from framework import manage_weights as _mw
+                                    _mw("add",
+                                        fname if it.get("origin") == "local"
+                                        else it.get("url"))
+                                    logs.append(f"Weight {fname} added.")
+                                except Exception as e:
+                                    logs.append(f"Error adding {fname}: {e}")
+                        break
     except Exception as e:
         logs.append(str(e))
     stdscr.addstr(max_y-2, 2, "Press any key to return...", curses.A_DIM)
