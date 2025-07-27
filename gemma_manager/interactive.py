@@ -93,6 +93,26 @@ HELP_TEXT = {
     ],
 }
 
+# Recommended weights (filename -> (description, origin URL))
+RECOMMENDED_WEIGHTS = {
+    "2b-it-sfp.sbs": (
+        "Gemma-1 2B instruction-tuned (8-bit switched float)",
+        "https://huggingface.co/google/gemma-2b-it-sfp-cpp"
+    ),
+    "7b-it-sfp.sbs": (
+        "Gemma-1 7B instruction-tuned (8-bit switched float)",
+        "https://huggingface.co/google/gemma-7b-it-sfp-cpp"
+    ),
+    "2b-pt-sfp.sbs": (
+        "Gemma-1 2B pre-trained (8-bit switched float)",
+        "https://huggingface.co/google/gemma-2b-pt-sfp-cpp"
+    ),
+    "7b-pt-sfp.sbs": (
+        "Gemma-1 7B pre-trained (8-bit switched float)",
+        "https://huggingface.co/google/gemma-7b-pt-sfp-cpp"
+    ),
+}
+
     k = 0
     selected = 0
     logs = []
@@ -223,27 +243,55 @@ def _handle_choice(stdscr, choice, logs, guardrails):
             manage_quantization(model, to, outm)
             logs.append("Quantization completed.")
         elif choice == "Manage Weights":
-            action = prompt(3, 4, "Action (add/remove/list): ")
-            wf = None
-            if action in ('add', 'remove'):
-                wf = prompt(5, 4, "Weight file path: ")
-            logs.append("Managing weights...")
-            # Capture output from manage_weights
-            out = []
-            try:
-                from framework import manage_weights as _mw
-                # Temporarily redirect prints
-                import io, sys as _sys
-                buf = io.StringIO()
-                old = _sys.stdout
-                _sys.stdout = buf
-                _mw(action, wf)
-                _sys.stdout = old
-                out = buf.getvalue().splitlines()
-            except Exception as e:
-                out = [f"Error: {e}"]
-            for line in out:
-                logs.append(line)
+            # Interactive weight selection: combine local and recommended
+            local_dir = os.path.join(os.getcwd(), "gemma_src", "models")
+            local_files = []
+            if os.path.isdir(local_dir):
+                local_files = [f for f in os.listdir(local_dir)
+                               if f.lower().endswith((".sbs", ".safetensors"))]
+            items = []
+            for fname in local_files:
+                items.append({"name": fname, "origin": "local",
+                              "desc": "Local file", "selected": False})
+            for fname, (desc, url) in RECOMMENDED_WEIGHTS.items():
+                if fname not in local_files:
+                    items.append({"name": fname, "origin": "HuggingFace",
+                                  "desc": desc, "url": url,
+                                  "selected": False})
+            if not items:
+                logs.append("No local or recommended weights found.")
+            else:
+                logs.append("Select weights to add (space to toggle, Enter to confirm)...")
+                idx = 0
+                while True:
+                    stdscr.erase()
+                    stdscr.addstr(1, 2, "[ Manage Weights ]", curses.A_BOLD)
+                    for i, it in enumerate(items):
+                        mark = "[x]" if it["selected"] else "[ ]"
+                        stdscr.addstr(3 + i, 4,
+                                      f"{mark} {it['name']} ({it['origin']}) - {it['desc']}")
+                    stdscr.refresh()
+                    key = stdscr.getch()
+                    if key in (curses.KEY_UP, ord('k')):
+                        idx = (idx - 1) % len(items)
+                    elif key in (curses.KEY_DOWN, ord('j')):
+                        idx = (idx + 1) % len(items)
+                    elif key == ord(' '):
+                        items[idx]["selected"] = not items[idx]["selected"]
+                    elif key in (10, 13):
+                        break
+                for it in items:
+                    if it["selected"]:
+                        fname = it["name"]
+                        logs.append(f"Adding weight {fname}...")
+                        try:
+                            from framework import manage_weights as _mw
+                            _mw("add",
+                                fname if it.get("origin") == "local"
+                                else it.get("url"))
+                            logs.append(f"Weight {fname} added.")
+                        except Exception as e:
+                            logs.append(f"Error adding {fname}: {e}")
     except Exception as e:
         logs.append(str(e))
     stdscr.addstr(max_y-2, 2, "Press any key to return...", curses.A_DIM)

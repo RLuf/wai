@@ -98,8 +98,18 @@ python3 cli.py weights --action add --file new_weights.bin
 # remover peso
 python3 cli.py weights --action remove --file old_weights.bin
 
-# listar pesos disponíveis
-python3 cli.py weights --action list
+## Weight Management / Gerenciamento de Pesos
+
+```sh
+# adicionar peso
+python3 cli.py weights --action add --file new_weights.bin
+
+# remover peso
+python3 cli.py weights --action remove --file old_weights.bin
+
+# listar pesos conhecidos localmente ou recomendados
+python3 cli.py tui  # e depois escolha 'Manage Weights' na TUI
+```
 ```
 
 ### Build Gemma C++ Inference Engine / Compilação do motor de inferência Gemma C++
