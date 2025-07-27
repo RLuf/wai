@@ -61,6 +61,38 @@ def _main(stdscr):
     curses.init_pair(3, curses.COLOR_GREEN, -1)                 # success
     curses.init_pair(4, curses.COLOR_RED, -1)                   # error
 
+# Help text for each menu item
+HELP_TEXT = {
+    "Hunt Guardrails": [
+        "Escaneia padrões de guardrails no código (Softcap, AcceptFunc, etc.).",
+        "Exemplo: busca padrões em gemma_src para revisão rápida."
+    ],
+    "Scan Guardrails": [
+        "Clona ou atualiza o repositório e lista blocos de guardrails com contexto.",
+        "Exemplo: clone=https://github.com/openai/gemma.git dest=gemma_src ctx=5"
+    ],
+    "Inference": [
+        "Executa inferência local no modelo Gemma com opções de quantização e ferramentas.",
+        "Exemplo: infer --model gemma2-2b-it-sfp.sbs --prompt \"Olá\" --quant fp16"
+    ],
+    "External Query": [
+        "Consulta dados externos via HTTP ou outro endpoint configurado.",
+        "Exemplo: query --endpoint https://api.example.com --query \"SELECT *\""
+    ],
+    "Tool": [
+        "Invoca ferramentas auxiliares (pré-processamento, pós-processamento).",
+        "Exemplo: tool --name summarize_tool --input \"texto longo...\""
+    ],
+    "Quantize Model": [
+        "Converte o modelo para formato quantizado (int8, fp16, etc.).",
+        "Exemplo: quantize --model base.bin --to int8 --out-model q8.bin"
+    ],
+    "Manage Weights": [
+        "Adiciona ou remove arquivos de pesos na configuração do modelo.",
+        "Exemplo: weights --action add --file new_weights.bin"
+    ],
+}
+
     k = 0
     selected = 0
     logs = []
@@ -119,6 +151,16 @@ def _handle_choice(stdscr, choice, logs, guardrails):
         return inp.decode('utf-8').strip()
 
     import os, sys
+    # Show detailed help for selected action
+    if choice in HELP_TEXT:
+        stdscr.erase()
+        stdscr.addstr(1, 2, f"[ {choice} Help ]", curses.A_BOLD)
+        for i, line in enumerate(HELP_TEXT[choice], start=3):
+            stdscr.addstr(i, 4, line)
+        stdscr.addstr(i + 2, 4, "Press any key to continue...", curses.A_DIM)
+        stdscr.getch()
+        stdscr.erase()
+        stdscr.addstr(1, 2, f"[ {choice} ]", curses.A_BOLD)
     try:
         if choice == "Hunt Guardrails":
             logs.append("Hunting guardrails...")
