@@ -8,6 +8,7 @@ consultas externas, tools, quantização e gerenciamento de pesos com logs e cor
 import curses
 import textwrap
 
+import subprocess
 from downloader import clone_gemma
 from parser import parse_guardrails
 from output import output_guardrails
@@ -20,6 +21,7 @@ from framework import (
 )
 
 MENU_ITEMS = [
+    "Hunt Guardrails",
     "Scan Guardrails",
     "Inference",
     "External Query",
@@ -116,8 +118,20 @@ def _handle_choice(stdscr, choice, logs, guardrails):
         curses.noecho()
         return inp.decode('utf-8').strip()
 
+    import os, sys
     try:
-        if choice == "Scan Guardrails":
+        if choice == "Hunt Guardrails":
+            logs.append("Hunting guardrails...")
+            try:
+                out = subprocess.check_output(
+                    [sys.executable, os.path.join(os.getcwd(), "guardrail_hunter.py")],
+                    text=True,
+                )
+                for line in out.splitlines():
+                    logs.append(line)
+            except Exception as e:
+                logs.append(f"Error: {e}")
+        elif choice == "Scan Guardrails":
             repo = prompt(3, 4, "Repo URL [default https://github.com/openai/gemma.git]: ") or None
             dest = prompt(5, 4, "Dest dir [default gemma_src]: ") or None
             branch = prompt(7, 4, "Branch/tag [optional]: ") or None

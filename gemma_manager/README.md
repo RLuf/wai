@@ -82,6 +82,7 @@ python3 cli.py quantize \
   --out-model model_int8.bin
 ```
 
+
 ### Weight Management / Gerenciamento de Pesos
 
 ```sh
@@ -91,6 +92,34 @@ python3 cli.py weights --action add --file new_weights.bin
 # remover peso
 python3 cli.py weights --action remove --file old_weights.bin
 ```
+
+### Build Gemma C++ Inference Engine / Compilação do motor de inferência Gemma C++
+
+Para compilar o binário `gemma` (C++) com CMake, instale um compilador C++17 e o CMake.
+Em sistemas Unix-like:
+```sh
+# na raiz do projeto
+mkdir -p gemma_src/build && cd gemma_src/build
+cmake ..
+cmake --build . -- -j$(nproc)
+# executável em gemma_src/build/gemma
+```
+
+Em Windows (PowerShell):
+```powershell
+cd gemma_src; mkdir build; cd build
+cmake -A x64 ..
+cmake --build . --config Release
+# executável em gemma_src\build\Release\gemma.exe
+```
+
+Exemplo de uso:
+```sh
+./gemma --model ../models/2b-it-sfp.sbs \
+      --tokenizer ../models/tokenizer.spm \
+      --prompt "Hello, world!"
+```
+
 ## Documentation Translation / Tradução da Documentação
 
 This README includes both English and Brazilian Portuguese sections.
