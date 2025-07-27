@@ -1,0 +1,295 @@
+# Weight compression, I/O and analysis
+
+package(
+    default_applicable_licenses = [
+        "//:license",  # Placeholder comment, do not modify
+    ],
+    # Placeholder for internal compatible_with
+    default_visibility = [
+        # Placeholder for internal visibility,
+        # Users require gcpp::Path etc., which are defined in this package.
+        "//visibility:public",
+    ],
+)
+
+config_setting(
+    name = "android",
+    constraint_values = [
+        "@platforms//os:android",
+    ],
+    visibility = ["//visibility:private"],
+)
+
+FILE_DEPS = select({
+    "//conditions:default": [
+        # Placeholder for io deps, do not remove
+    ],
+    ":android": [],
+    # Placeholder for internal build rules, do not remove
+})
+
+cc_library(
+    name = "io",
+    srcs = [
+        "io.cc",
+        # Placeholder for io backend, do not remove
+    ],
+    hdrs = ["io.h"],
+    local_defines = select({
+        # Placeholder for internal build rules, do not remove
+        "//conditions:default": [],
+    }),
+    deps = [
+        "@highway//:hwy",
+    ] + FILE_DEPS,
+)
+
+cc_library(
+    name = "fields",
+    srcs = ["fields.cc"],
+    hdrs = ["fields.h"],
+    deps = [
+        "@highway//:hwy",
+    ],
+)
+
+cc_test(
+    name = "fields_test",
+    srcs = ["fields_test.cc"],
+    deps = [
+        ":fields",
+        "@googletest//:gtest_main",  # buildcleaner: keep
+        "@highway//:hwy_test_util",
+    ],
+)
+
+cc_library(
+    name = "blob_store",
+    srcs = ["blob_store.cc"],
+    hdrs = ["blob_store.h"],
+    deps = [
+        ":io",
+        "@highway//:hwy",
+        "@highway//:thread_pool",
+    ],
+)
+
+cc_test(
+    name = "blob_store_test",
+    srcs = ["blob_store_test.cc"],
+    deps = [
+        ":blob_store",
+        ":io",
+        "@googletest//:gtest_main",  # buildcleaner: keep
+        "@highway//:hwy",
+        "@highway//:hwy_test_util",
+        "@highway//:thread_pool",
+    ],
+)
+
+cc_library(
+    name = "distortion",
+    hdrs = [
+        "distortion.h",
+        "shared.h",
+    ],
+    deps = [
+        "//:basics",
+        "@highway//:hwy",
+        "@highway//:stats",
+        "@highway//hwy/contrib/sort:vqsort",
+    ],
+)
+
+cc_test(
+    name = "distortion_test",
+    size = "small",
+    srcs = ["distortion_test.cc"],
+    deps = [
+        ":distortion",
+        "@googletest//:gtest_main",  # buildcleaner: keep
+        "//:test_util",
+        "@highway//:hwy_test_util",
+        "@highway//:nanobenchmark",  # Unpredictable1
+    ],
+)
+
+cc_library(
+    name = "sfp",
+    hdrs = ["shared.h"],
+    textual_hdrs = ["sfp-inl.h"],
+    deps = [
+        "//:basics",
+        "@highway//:hwy",
+    ],
+)
+
+cc_library(
+    name = "nuq",
+    hdrs = ["shared.h"],
+    textual_hdrs = ["nuq-inl.h"],
+    deps = [
+        ":sfp",
+        "//:basics",
+        "@highway//:hwy",
+        "@highway//hwy/contrib/sort:vqsort",
+    ],
+)
+
+cc_library(
+    name = "test_util",
+    textual_hdrs = [
+        "test_util-inl.h",
+    ],
+    deps = [
+        ":compress",
+        ":distortion",
+        "@highway//:hwy",
+        "@highway//:hwy_test_util",
+    ],
+)
+
+cc_test(
+    name = "sfp_test",
+    size = "small",
+    srcs = ["sfp_test.cc"],
+    features = ["fully_static_link"],
+    linkstatic = True,
+    local_defines = ["HWY_IS_TEST"],
+    # for test_suite.
+    tags = ["hwy_ops_test"],
+    deps = [
+        ":distortion",
+        ":sfp",
+        "@googletest//:gtest_main",  # buildcleaner: keep
+        "//:test_util",
+        "@highway//:hwy",
+        "@highway//:hwy_test_util",
+        "@highway//:nanobenchmark",
+    ],
+)
+
+cc_test(
+    name = "nuq_test",
+    size = "small",
+    timeout = "long",
+    srcs = ["nuq_test.cc"],
+    features = ["fully_static_link"],
+    linkstatic = True,
+    local_defines = ["HWY_IS_TEST"],
+    # for test_suite.
+    tags = ["hwy_ops_test"],
+    deps = [
+        ":distortion",
+        ":nuq",
+        ":sfp",
+        "@googletest//:gtest_main",  # buildcleaner: keep
+        "//:test_util",
+        "@highway//:hwy",
+        "@highway//:hwy_test_util",
+        "@highway//:nanobenchmark",
+    ],
+)
+
+cc_library(
+    name = "compress",
+    srcs = ["compress.cc"],
+    hdrs = [
+        "compress.h",
+        "shared.h",
+    ],
+    textual_hdrs = ["compress-inl.h"],
+    deps = [
+        ":blob_store",
+        ":distortion",
+        ":fields",
+        ":io",
+        ":nuq",
+        ":sfp",
+        "//:allocator",
+        "//:basics",
+        "//:common",
+        "@highway//:hwy",
+        "@highway//:nanobenchmark",
+        "@highway//:stats",
+        "@highway//:thread_pool",
+    ],
+)
+
+cc_test(
+    name = "compress_test",
+    size = "small",
+    timeout = "long",
+    srcs = ["compress_test.cc"],
+    features = ["fully_static_link"],
+    linkstatic = True,
+    local_defines = ["HWY_IS_TEST"],
+    # for test_suite.
+    tags = ["hwy_ops_test"],
+    deps = [
+        ":compress",
+        ":distortion",
+        ":test_util",
+        "@googletest//:gtest_main",  # buildcleaner: keep
+        "//:test_util",
+        "@highway//:hwy",
+        "@highway//:hwy_test_util",
+        "@highway//:thread_pool",
+    ],
+)
+
+# For internal experimentation
+cc_library(
+    name = "analyze",
+    textual_hdrs = ["analyze.h"],
+    deps = [
+        ":nuq",
+        ":sfp",
+        "@highway//:hwy",
+        "@highway//:stats",
+        "@highway//:thread_pool",
+        "@highway//hwy/contrib/sort:vqsort",
+    ],
+)
+
+cc_binary(
+    name = "compress_weights",
+    srcs = ["compress_weights.cc"],
+    deps = [
+        ":compress",
+        ":io",
+        "//:allocator",
+        "//:args",
+        "//:common",
+        "//:tokenizer",
+        "//:weights",
+        "@highway//:hwy",
+        "@highway//:thread_pool",
+    ],
+)
+
+cc_binary(
+    name = "blob_compare",
+    srcs = ["blob_compare.cc"],
+    deps = [
+        ":blob_store",
+        ":io",
+        "//:allocator",
+        "//:basics",
+        "//:threading",
+        "@highway//:hwy",
+        "@highway//:hwy_test_util",
+        "@highway//:nanobenchmark",
+    ],
+)
+
+cc_binary(
+    name = "migrate_weights",
+    srcs = ["migrate_weights.cc"],
+    deps = [
+        "//:app",
+        "//:args",
+        "//:benchmark_helper",
+        "//:gemma_lib",
+    ],
+)

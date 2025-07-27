@@ -1,0 +1,50 @@
+package(
+    default_applicable_licenses = [
+        "//:license",  # Placeholder comment, do not modify
+    ],
+    # Placeholder for internal compatible_with
+    default_visibility = [
+        "//:__subpackages__",
+    ],
+)
+
+cc_library(
+    name = "image",
+    srcs = ["image.cc"],
+    hdrs = ["image.h"],
+    deps = [
+        "//compression:io",
+        "@highway//:hwy",
+        "@highway//:profiler",
+    ],
+)
+
+cc_test(
+    name = "image_test",
+    srcs = ["image_test.cc"],
+    data = ["testdata/image.ppm"],
+    deps = [
+        ":image",
+        "@googletest//:gtest_main",  # buildcleaner: keep
+    ],
+)
+
+cc_test(
+    name = "paligemma_test",
+    srcs = ["paligemma_test.cc"],
+    # Requires model files
+    tags = [
+        "local",
+        "manual",
+        "no_tap",
+    ],
+    deps = [
+        "@googletest//:gtest_main",  # buildcleaner: keep
+        "//:benchmark_helper",
+        "//:common",
+        "//:gemma_lib",
+        "//compression:sfp",
+        "@highway//:hwy",
+        "@highway//:hwy_test_util",
+    ],
+)
