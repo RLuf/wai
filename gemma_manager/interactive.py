@@ -28,6 +28,8 @@ MENU_ITEMS = [
     "Tool",
     "Quantize Model",
     "Manage Weights",
+    "Configure Env",
+    "Show Config",
     "Compile Gemma",
     "Exit",
 ]
@@ -84,6 +86,16 @@ HELP_TEXT = {
         "Adiciona ou remove arquivos de pesos na configuração do modelo.",
         "Exemplo: weights --action add --file new_weights.bin"
     ],
+    "Configure Env": [
+        "Executa o script configure para instalar dependências do sistema.",
+        "Exemplo: configure",
+        "Use PageUp/PageDown para rolar a saída."
+    ],
+    "Show Config": [
+        "Exibe o status atual da configuração sem instalar nada.",
+        "Exemplo: configure --status",
+        "Use PageUp/PageDown para rolar a saída."
+    ],
     "Compile Gemma": [
         "Compila o executável Gemma usando presets de build.",
         "Use espaço para marcar presets e Enter para iniciar a compilação."
@@ -131,6 +143,7 @@ def _main(stdscr):
     selected = 0
     logs = []
     guardrails = []
+    scroll = 0  # log scroll offset
 
     while True:
         stdscr.erase()
@@ -147,11 +160,15 @@ def _main(stdscr):
             else:
                 menu_win.addstr(idx + 1, 2, item)
 
-        # Draw log window
-        log_h = 5
-        log_win = stdscr.subwin(log_h, max_x - 2, max_y - log_h - 1, 1)
+        # Draw log window with dynamic height to show more output (scrolls overflow)
+        menu_h = len(MENU_ITEMS) + 2
+        visible = max(5, max_y - menu_h - 3)
+        log_win = stdscr.subwin(visible, max_x - 2, max_y - visible - 1, 1)
         log_win.box()
-        for i, line in enumerate(logs[-(log_h - 2):]):
+        # Display logs from (len(logs)-visible-scroll) to end-scroll
+        start = max(0, len(logs) - visible - scroll)
+        end = start + visible - 2
+        for i, line in enumerate(logs[start:end]):
             log_win.attron(curses.color_pair(2))
             log_win.addnstr(i + 1, 2, line, max_x - 6)
             log_win.attroff(curses.color_pair(2))
@@ -159,6 +176,13 @@ def _main(stdscr):
         stdscr.refresh()
 
         key = stdscr.getch()
+        # PageUp/PageDown scroll
+        if key == curses.KEY_PPAGE:
+            scroll = min(scroll + 1, max(0, len(logs) - visible))
+            continue
+        if key == curses.KEY_NPAGE:
+            scroll = max(scroll - 1, 0)
+            continue
         if key in (curses.KEY_UP, ord('k')):
             selected = (selected - 1) % len(MENU_ITEMS)
         elif key in (curses.KEY_DOWN, ord('j')):
@@ -192,7 +216,8 @@ def _handle_choice(stdscr, choice, logs, guardrails):
 
     import os, sys
     # Show detailed help for selected action
-    if choice in HELP_TEXT:
+    # Show detailed help for menu items (skip for configure/show-config to avoid double pause)
+    if choice in HELP_TEXT and choice not in ("Configure Env", "Show Config"):
         stdscr.erase()
         stdscr.addstr(1, 2, f"[ {choice} Help ]", curses.A_BOLD)
         for i, line in enumerate(HELP_TEXT[choice], start=3):
@@ -281,6 +306,36 @@ def _handle_choice(stdscr, choice, logs, guardrails):
             logs.append("Quantizing model...")
             manage_quantization(model, to, outm)
             logs.append("Quantization completed.")
+        elif choice == "Show Config":
+            logs.append("Checking configuration status...")
+            try:
+                out = subprocess.check_output(
+                    "bash ./gemma_src/configure --status", shell=True, stderr=subprocess.STDOUT, text=True
+                )
+                for L in out.splitlines():
+                    logs.append(L)
+            except subprocess.CalledProcessError as e:
+                logs.append(f"Error: {e.output}")
+            # pause to let user read full output
+            stdscr.erase()
+            stdscr.addstr(1, 2, "[ Show Config ]", curses.A_BOLD)
+            stdscr.addstr(3, 4, "Press any key to continue...", curses.A_DIM)
+            stdscr.getch()
+        elif choice == "Configure Env":
+            logs.append("Running configure script to install dependencies...")
+            try:
+                out = subprocess.check_output(
+                    "bash ./gemma_src/configure", shell=True, stderr=subprocess.STDOUT, text=True
+                )
+                for L in out.splitlines():
+                    logs.append(L)
+            except subprocess.CalledProcessError as e:
+                logs.append(f"Error: {e.output}")
+            # pause to let user read full output
+            stdscr.erase()
+            stdscr.addstr(1, 2, "[ Configure Env ]", curses.A_BOLD)
+            stdscr.addstr(3, 4, "Press any key to continue...", curses.A_DIM)
+            stdscr.getch()
         elif choice == "Compile Gemma":
             # Interactive compile presets
             if not BUILD_PRESETS:
@@ -312,16 +367,21 @@ def _handle_choice(stdscr, choice, logs, guardrails):
                             if selected_p:
                                 name, cmds = BUILD_PRESETS[j]
                                 logs.append(f"Running build preset: {name}")
-                                for cmd in cmds:
-                                    logs.append(f"$ {cmd}")
-                                    try:
-                                        out = subprocess.check_output(
-                                            cmd, shell=True, stderr=subprocess.STDOUT, text=True
-                                        )
-                                        for L in out.splitlines():
-                                            logs.append(L)
-                                    except subprocess.CalledProcessError as e:
-                                        logs.append(f"Error: {e}")
+                        for cmd in cmds:
+                            # run commands in gemma_src directory
+                            cmd_full = f"cd gemma_src && {cmd}"
+                            logs.append(f"$ {cmd_full}")
+                            try:
+                                out = subprocess.check_output(
+                                    cmd_full, shell=True, stderr=subprocess.STDOUT, text=True
+                                )
+                                for L in out.splitlines():
+                                    logs.append(L)
+                            except subprocess.CalledProcessError as e:
+                                logs.append(f"Error: exit {e.returncode}")
+                                if e.output:
+                                    for L in e.output.splitlines():
+                                        logs.append(L)
                         break
         elif choice == "Manage Weights":
             # Interactive weight selection: combine local and recommended

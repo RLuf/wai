@@ -51,6 +51,22 @@ stable.*
 
 ## Quick Start
 
+### Prerequisites
+
+Before building, run the `configure` script to install system dependencies, including kernel headers for module support:
+
+```sh
+./configure
+```
+
+**PT-BR:**
+
+```sh
+# Antes de compilar, execute o script 'configure' para instalar dependências do sistema,
+# incluindo cabeçalhos do kernel para compilação do módulo:
+./configure
+```
+
 ### System requirements
 
 Before starting, you should have installed:
@@ -161,6 +177,20 @@ cmake --preset make
 cmake --build --preset make -j [number of parallel threads to use]
 ```
 
+```sh
+# Build kernel module (gemma_kmod)
+cmake --preset kmod
+cmake --build --preset kmod
+```
+
+**PT-BR:**
+
+```sh
+# Compila o módulo de kernel (gemma_kmod)
+cmake --preset kmod
+cmake --build --preset kmod
+```
+
 Replace `[number of parallel threads to use]` with a number - the number of
 cores available on your system is a reasonable heuristic.  For example,
 `make -j4 gemma` will build using 4 threads. If the `nproc` command is
@@ -191,7 +221,21 @@ If the build is successful, you should now have a `gemma.exe` executable in the 
 #### Bazel
 
 ```sh
+# Compila o binário gemma
 bazel build -c opt --cxxopt=-std=c++20 :gemma
+
+# Compila o módulo de kernel (gemma_kmod)
+bazel build -c opt --cxxopt=-std=c++20 :gemma_kmod
+```
+
+**PT-BR:**
+
+```sh
+# Compila o binário gemma
+bazel build -c opt --cxxopt=-std=c++20 :gemma
+
+# Compila o módulo de kernel (gemma_kmod)
+bazel build -c opt --cxxopt=-std=c++20 :gemma_kmod
 ```
 
 If the build is successful, you should now have a `gemma` executable in the `bazel-bin/` directory.

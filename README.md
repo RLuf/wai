@@ -109,6 +109,16 @@ python3 cli.py weights --action remove --file old_weights.bin
 
 # listar pesos conhecidos localmente ou recomendados
 python3 cli.py tui  # e depois escolha 'Manage Weights' na TUI
+
+### Configure / Configuração do Ambiente
+
+```sh
+# instala dependências do sistema (apt, Bazel, kernel headers)
+python3 cli.py configure
+
+# mostra estado atual da configuração (sem instalar)
+python3 cli.py configure --status
+```
 ```
 ```
 

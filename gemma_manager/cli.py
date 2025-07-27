@@ -16,10 +16,9 @@ from framework import (
 
 def main():
     parser = argparse.ArgumentParser(
-        description=(
-            "Gemma Orchestrator: scan guardrails, inference, queries, tools, quant, weights. "
-            "Orquestrador Gemma: scan de guardrails, inferência, consultas, tools, quant, weights."
-        )
+    description=(
+        "Gemma Orchestrator / Orquestrador Gemma: scan guardrails, inference, queries, tools, quant, weights."
+    )
     )
     subparsers = parser.add_subparsers(dest="command")
 
@@ -82,6 +81,16 @@ def main():
         help="Weight file path (not needed for list). Caminho do arquivo de peso (não necessário para list)."
     )
 
+    cfg_p = subparsers.add_parser(
+        "configure",
+        help="Run configure script to install system dependencies or show status."
+    )
+    cfg_p.add_argument(
+        "--status",
+        action="store_true",
+        help="Show current system configuration without installing."
+    )
+
     tui_p = subparsers.add_parser(
         "tui",
         help="Launch full interactive TUI. Inicia a interface TUI completa."
@@ -112,6 +121,13 @@ def main():
     elif args.command == "tui":
         from interactive import run_tui
         run_tui()
+    elif args.command == "configure":
+        import subprocess, os, sys
+        script = os.path.join(os.getcwd(), "gemma_src", "configure")
+        cmd = ["bash", script]
+        if args.status:
+            cmd.append("--status")
+        subprocess.run(cmd, check=True)
 
 if __name__ == "__main__":
     main()

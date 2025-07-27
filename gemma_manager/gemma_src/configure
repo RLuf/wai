@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# configure: Install system prerequisites for building gemma.cpp with Bazel.
+
+set -euo pipefail
+
+# Support --status to display current configuration without installing
+STATUS=false
+if [[ ${1:-} == "--status" || ${1:-} == "-s" ]]; then
+  STATUS=true
+fi
+
+# This script supports Debian/Ubuntu systems using apt-get.
+if ! command -v apt-get >/dev/null 2>&1; then
+  echo "Error: apt-get not found. This script supports Debian/Ubuntu only." >&2
+  exit 1
+fi
+
+# Determine whether to use sudo
+if [[ $EUID -ne 0 ]]; then
+  SUDO=sudo
+else
+  SUDO=
+fi
+
+# Update package lists unless status-only
+if ! $STATUS; then
+  echo "Updating package lists..."
+  $SUDO apt-get update
+fi
+
+# Basic packages required
+packages=(build-essential git curl unzip)
+missing=()
+# Check and install basic packages
+for pkg in "${packages[@]}"; do
+  if ! dpkg -s "$pkg" >/dev/null 2>&1; then
+    missing+=("$pkg")
+  else
+    echo "$pkg: installed"
+  fi
+done
+if [[ ${#missing[@]} -gt 0 ]]; then
+  if $STATUS; then
+    echo "Missing packages: ${missing[*]}"
+  else
+    echo "Installing: ${missing[*]}"
+    $SUDO apt-get install -y "${missing[@]}"
+  fi
+fi
+
+# Ensure gpg is available for Bazel key import
+if ! command -v gpg >/dev/null 2>&1; then
+  echo "Installing gnupg (for gpg)..."
+  $SUDO apt-get install -y gnupg
+fi
+
+# Install Bazel if not present
+# Install or report Bazel
+if ! command -v bazel >/dev/null 2>&1; then
+  if $STATUS; then
+    echo "bazel: not installed"
+  else
+    echo "Installing Bazel..."
+    curl -fsSL https://bazel.build/bazel-release.pub.gpg | gpg --dearmor > bazel.gpg
+    $SUDO mv bazel.gpg /etc/apt/trusted.gpg.d/
+    echo "deb [arch=amd64] https://storage.googleapis.com/bazel-apt stable jdk1.8" | $SUDO tee /etc/apt/sources.list.d/bazel.list
+    $SUDO apt-get update
+    $SUDO apt-get install -y bazel
+  fi
+else
+  bazel --version
+fi
+
+# Install or report Linux kernel headers for building the kernel module
+KHDR="linux-headers-$(uname -r)"
+if ! dpkg -s "$KHDR" >/dev/null 2>&1; then
+  if $STATUS; then
+    echo "$KHDR: not installed"
+  else
+    echo "Installing kernel headers ($KHDR)..."
+    $SUDO apt-get install -y "$KHDR"
+  fi
+else
+  echo "$KHDR: installed"
+fi
+
+echo "All prerequisites processed."
+if ! $STATUS; then
+  echo "You can now build gemma.cpp with Bazel: bazel build -c opt --cxxopt=-std=c++20 :gemma"
+fi
