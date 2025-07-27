@@ -176,12 +176,18 @@ def _handle_choice(stdscr, choice, logs, guardrails):
     stdscr.addstr(1, 2, f"[ {choice} ]", curses.A_BOLD)
 
     def prompt(y, x, prompt_str):
+        stdscr.attron(curses.color_pair(3))
         stdscr.addstr(y, x, prompt_str)
+        stdscr.attroff(curses.color_pair(3))
         stdscr.refresh()
         curses.echo()
-        inp = stdscr.getstr(y, x + len(prompt_str),  max_x - x - len(prompt_str) - 2)
+        inp_bytes = stdscr.getstr(y, x + len(prompt_str), max_x - x - len(prompt_str) - 2)
         curses.noecho()
-        return inp.decode('utf-8').strip()
+        inp = inp_bytes.decode('utf-8').strip()
+        # allow 'b' to cancel/back
+        if inp.lower() == 'b':
+            return None
+        return inp
 
     import os, sys
     # Show detailed help for selected action
@@ -207,11 +213,15 @@ def _handle_choice(stdscr, choice, logs, guardrails):
             except Exception as e:
                 logs.append(f"Error: {e}")
         elif choice == "Scan Guardrails":
-            repo = prompt(3, 4, "Repo URL [default https://github.com/openai/gemma.git]: ") or None
-            dest = prompt(5, 4, "Dest dir [default gemma_src]: ") or None
-            branch = prompt(7, 4, "Branch/tag [optional]: ") or None
-            ctx = prompt(9, 4, "Context lines [default 3]: ") or None
-            logs.append(f"Cloning repository...")
+            repo = prompt(3, 4, "Repo URL [default https://github.com/openai/gemma.git] (b=back): ")
+            if repo is None: return
+            dest = prompt(5, 4, "Dest dir [default gemma_src] (b=back): ")
+            if dest is None: return
+            branch = prompt(7, 4, "Branch/tag [optional] (b=back): ")
+            if branch is None: return
+            ctx = prompt(9, 4, "Context lines [default 3] (b=back): ")
+            if ctx is None: return
+            logs.append("Cloning repository...")
             clone_gemma(repo or "https://github.com/openai/gemma.git",
                         dest or "gemma_src", branch or None)
             logs.append(f"Parsing guardrails...")
@@ -220,39 +230,54 @@ def _handle_choice(stdscr, choice, logs, guardrails):
             logs.append(f"Found {len(guardrails)} guardrails.")
             logs.append("Use 'Scan Guardrails' > 'Select...' for details.")
         elif choice == "Inference":
-            model = prompt(3, 4, "Model id/path: ")
-            prompt_txt = prompt(5, 4, "Prompt: ")
-            quant = prompt(7, 4, "Quant [int8/fp16/fp32 or none]: ") or None
-            weights = prompt(9, 4, "Weights (comma sep) or none: ") or None
-            ext = prompt(11,4, "External query or none: ") or None
-            tool = prompt(13,4, "Tool or none: ") or None
-            logs.append(f"Running inference...")
-            res = run_inference(model, prompt_txt,
-                                quant=quant or None,
-                                weights=weights.split(',') if weights else None,
-                                external_query=ext or None,
-                                tool=tool or None)
+            model = prompt(3, 4, "Model id/path (b=back): ")
+            if model is None: return
+            prompt_txt = prompt(5, 4, "Prompt (b=back): ")
+            if prompt_txt is None: return
+            quant = prompt(7, 4, "Quant [int8/fp16/fp32 or none] (b=back): ")
+            if quant is None: return
+            weights = prompt(9, 4, "Weights (comma sep) or none (b=back): ")
+            if weights is None: return
+            ext = prompt(11, 4, "External query or none (b=back): ")
+            if ext is None: return
+            tool = prompt(13, 4, "Tool or none (b=back): ")
+            if tool is None: return
+            logs.append("Running inference...")
+            res = run_inference(
+                model, prompt_txt,
+                quant=quant or None,
+                weights=weights.split(',') if weights else None,
+                external_query=ext or None,
+                tool=tool or None,
+            )
             for line in textwrap.wrap(res, max_x - 6):
                 logs.append(line)
         elif choice == "External Query":
-            endpoint = prompt(3,4, "Endpoint: ")
-            query = prompt(5,4, "Query: ")
-            logs.append(f"External query...")
+            endpoint = prompt(3, 4, "Endpoint (b=back): ")
+            if endpoint is None: return
+            query = prompt(5, 4, "Query (b=back): ")
+            if query is None: return
+            logs.append("External query...")
             res = external_query(query, endpoint)
             for line in textwrap.wrap(res, max_x - 6):
                 logs.append(line)
         elif choice == "Tool":
-            name = prompt(3,4, "Tool name: ")
-            inp = prompt(5,4, "Input data: ")
-            logs.append(f"Invoking tool...")
+            name = prompt(3, 4, "Tool name (b=back): ")
+            if name is None: return
+            inp = prompt(5, 4, "Input data (b=back): ")
+            if inp is None: return
+            logs.append("Invoking tool...")
             out = use_tool(name, inp)
             for line in textwrap.wrap(out, max_x - 6):
                 logs.append(line)
         elif choice == "Quantize Model":
-            model = prompt(3,4, "Source model: ")
-            to = prompt(5,4, "To quantization: ")
-            outm = prompt(7,4, "Output model path: ")
-            logs.append(f"Quantizing model...")
+            model = prompt(3, 4, "Source model (b=back): ")
+            if model is None: return
+            to = prompt(5, 4, "To quantization (b=back): ")
+            if to is None: return
+            outm = prompt(7, 4, "Output path (b=back): ")
+            if outm is None: return
+            logs.append("Quantizing model...")
             manage_quantization(model, to, outm)
             logs.append("Quantization completed.")
         elif choice == "Compile Gemma":
