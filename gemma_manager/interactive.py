@@ -53,14 +53,6 @@ def run_tui():
         print(f"Error initializing terminal: {e}", file=sys.stderr)
         sys.exit(1)
 
-def _main(stdscr):
-    # Initialize colors
-    curses.start_color()
-    curses.use_default_colors()
-    curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_CYAN)   # menu highlight
-    curses.init_pair(2, curses.COLOR_YELLOW, -1)                # logs
-    curses.init_pair(3, curses.COLOR_GREEN, -1)                 # success
-    curses.init_pair(4, curses.COLOR_RED, -1)                   # error
 
 # Help text for each menu item
 HELP_TEXT = {
@@ -103,6 +95,8 @@ BUILD_PRESETS = [
     ("Unix Make (CMake preset make)", ["cmake --preset make", "cmake --build . --preset make -j$(nproc)"]),
     ("Windows Release (CMake preset windows)", ["cmake --preset windows", "cmake --build . --preset windows --config Release"]),
     ("Bazel build (opt)", ["bazel build -c opt --cxxopt=-std=c++20 :gemma"]),
+    ("Library only (libgemma)", ["cmake --preset make", "cmake --build . --preset make --target libgemma"]),
+    ("Kernel Module (CMake preset kmod)", ["cmake --preset kmod", "cmake --build . --preset kmod"]),
 ]
 
 # Recommended weights (filename -> (description, origin URL))
@@ -126,6 +120,13 @@ RECOMMENDED_WEIGHTS = {
 }
 
 def _main(stdscr):
+    # Initialize colors for highlighting and logs
+    curses.start_color()
+    curses.use_default_colors()
+    curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_CYAN)   # menu highlight
+    curses.init_pair(2, curses.COLOR_YELLOW, -1)                # logs
+    curses.init_pair(3, curses.COLOR_GREEN, -1)                 # success
+    curses.init_pair(4, curses.COLOR_RED, -1)                   # error
     k = 0
     selected = 0
     logs = []

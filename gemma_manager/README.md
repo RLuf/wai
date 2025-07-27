@@ -139,7 +139,40 @@ Exemplo de uso:
       --prompt "Hello, world!"
 ```
 
+### Building Shared Library and Kernel Module / Biblioteca Compartilhada e Módulo de Kernel
+
+Além do binário, você pode compilar a biblioteca compartilhada `libgemma` ou o módulo de kernel `gemma_kmod.ko`.
+
+#### Biblioteca Compartilhada (libgemma)
+```sh
+cd gemma_src/build
+cmake --preset make
+cmake --build . --preset make --target libgemma
+# saída: gemma_src/build/libgemma.so
+```
+
+#### Módulo de Kernel (gemma_kmod.ko)
+Requer cabeçalhos do kernel Linux instalados.
+```sh
+mkdir -p gemma_src/build-kmod && cd gemma_src/build-kmod
+cmake -DBUILD_KMOD=ON -DCMAKE_BUILD_TYPE=Release ../
+cmake --build .
+# módulo em gemma_src/build-kmod/gemma_kmod.ko
+sudo insmod gemma_kmod.ko
+sudo rmmod gemma_kmod
+```
+
 ## Documentation Translation / Tradução da Documentação
 
 This README includes both English and Brazilian Portuguese sections.
 Este README inclui seções em Inglês e Português Brasileiro.
+
+## License / Licença
+
+This project (script, interactive TUI, and start-manager) is licensed under
+Creative Commons Attribution 4.0 International (CC BY 4.0).
+© 2025 Roger Luft
+
+Este projeto (scripts, interface TUI e start-manager) está licenciado sob
+Creative Commons Attribution 4.0 International (CC BY 4.0).
+© 2025 Roger Luft
